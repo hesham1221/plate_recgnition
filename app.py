@@ -11,6 +11,67 @@ app.config["IMAGE_UPLOADS"] = "./static/images/profiles"
 app.config["ALLOWED_IMAGE_EXTENSIONS"] = ["JPEG", "JPG", "PNG", "GIF"]
 
 
+def detect_plate(img):
+    faceCascade = cv2.CascadeClassifier('haarcascade_russian_plate_number.xml')
+    faces = faceCascade.detectMultiScale(img, scaleFactor=1.2,minNeighbors=5, minSize=(25, 25))
+    for (x, y, w, h) in faces:
+        plate = img[y-30: y+h, x:x+w]  # all
+        ocr = img[y: y+h, x:x+w]  # cropped
+    cv2.imshow('plates', plate)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    text_extraction = textextract(ocr)
+    color = colorextract(plate)
+    # print(f"text : {text_extraction} , color : {color}")
+    return data(color, text_extraction)
+
+
+def textextract(img):
+    reader = easyocr.Reader(['ar', 'en'], gpu=False)
+    result = reader.readtext(img)
+    return result
+
+def data(color, text):
+    plate_data = {}
+    exact_text = text[0][1]
+    # print("exact", exact_text)
+    plate_data["color"] = color
+    plate_data["text"] = exact_text
+    print(plate_data)
+    return plate_data
+
+    # color extract
+
+
+def colorextract(plate):
+    res = cv2.resize(plate, dsize=(250, 200), interpolation=cv2.INTER_CUBIC)
+    crop2 = res[0:80, 0:250]
+    # reshape array of image pixels
+    data = np.reshape(crop2, (80 * 250, 3))
+    data = np.float32(data)
+    # clustreing using kmeans
+    number_clusters = 1  # one dominat color
+    # when to stop the algorithm, 10 = max_iter, 1.0 = epsilon
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    flags = cv2.KMEANS_RANDOM_CENTERS
+    compactness, labels, centers = cv2.kmeans(
+        data, number_clusters, None, criteria, 10, flags)
+    rgb_values = []
+    for index, row in enumerate(centers):
+        rgb = create_bar(200, 200, row)
+        # bars.append(bar)
+        rgb_values.append(rgb)
+    for index, row in enumerate(rgb_values):
+        print(f'RGB{row}')
+        return f'RGB{row}'
+
+
+def create_bar(height, width, color):
+    bar = np.zeros((height, width, 3), np.uint8)
+    bar[:] = color
+    red, green, blue = int(color[2]), int(color[1]), int(color[0])
+    return (red, green, blue)
+    
 
 def allowed_image(filename):
     if not "." in filename:
@@ -34,43 +95,13 @@ def upload_file():
                 'haarcascade_russian_plate_number.xml')
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config["IMAGE_UPLOADS"], filename))
-            img = cv2.imread(os.path.join(app.config["IMAGE_UPLOADS"], filename))
-            cv2.imshow("original", img)
-            # img = cv2.resize(img, (100, 100))
-            # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-            faces = faceCascade.detectMultiScale(img, scaleFactor=1.2,
-                                                minNeighbors=5, minSize=(25, 25))
-
-            for (x, y, w, h) in faces:
-                # cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                plate = img[y-40: y+h, x:x+w]
-                ocr = img[y: y+h, x:x+w]
-                # plate = cv2.blur(plate, ksize=(20, 20))
-                # put the blurred plate into the original image
-                # img[y: y+h, x:x+w] = plate
-
-
-            cv2.imshow('plates', plate)
-            if cv2.waitKey(0) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-            # os.environ['TESSDATA_PREFIX'] = '.'
-            # img = cv.imread("plate.png")
-            # # img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-            cv2.imshow("img", ocr)
-
-            # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-            # print(pytesseract.image_to_string(ocrimg, lang="ara", config="."))
-
-            reader = easyocr.Reader(['ar', 'en'], gpu=False)
-            result = reader.readtext(ocr)
-            print(result)
-            cv2.waitKey(0)
-
-            cv2.destroyAllWindows()
+            plateimg = cv2.imread(os.path.join(app.config["IMAGE_UPLOADS"], filename))
+            # bars = []
+            # cv2.imshow('Dominant colors', img_bar)
             flash('File upload Successfully !', "success")
-            return result
+            palte_info = detect_plate(plateimg)
+            os.remove(os.path.join(app.config["IMAGE_UPLOADS"], filename))
+            return palte_info
         else:
             flash('That file extension is not allowed', "danger")
             return redirect(request.url)
