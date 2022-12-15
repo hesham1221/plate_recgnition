@@ -46,7 +46,7 @@ def colorextract(plate):
         # bars.append(bar)
         rgb_values.append(rgb)
     for index, row in enumerate(rgb_values):
-        print(f'RGB{row}')
+        # print(f'RGB{row}')
         return f'RGB{row}'
 
 
