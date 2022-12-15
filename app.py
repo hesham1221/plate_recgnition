@@ -1,8 +1,8 @@
 import os
 import cv2
 import easyocr
-from flask import Flask, render_template, request, redirect, flash
-from sqlalchemy.exc import IntegrityError
+import numpy as np
+from flask import Flask, request, redirect, flash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -46,8 +46,8 @@ def colorextract(plate):
         # bars.append(bar)
         rgb_values.append(rgb)
     for index, row in enumerate(rgb_values):
-        # print(f'RGB{row}')
-        return 'red'
+        print(f'RGB{row}')
+        return f'RGB{row}'
 
 
 def create_bar(height, width, color):
@@ -86,12 +86,16 @@ def upload_file():
             faceCascade = cv2.CascadeClassifier('haarcascade_russian_plate_number.xml')
             faces = faceCascade.detectMultiScale(img, scaleFactor=1.2,minNeighbors=5, minSize=(25, 25))
             print(faceCascade)
+            ocr = ''
             for (x, y, w, h) in faces:
                 plate = img[y-40: y+h, x:x+w]  # all
                 ocr = img[y: y+h, x:x+w]  # cropped
-            cv2.imshow('plates', plate)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            # cv2.imshow('plates', plate)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            if ocr == '' :
+                os.remove(os.path.join(app.config["IMAGE_UPLOADS"], filename))
+                return 'can\'t resolve the image'
             text_extraction = textextract(ocr)
             color = colorextract(plate)
             # print(f"text : {text_extraction} , color : {color}")

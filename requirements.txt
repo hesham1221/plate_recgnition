@@ -1,5 +1,6 @@
 easyocr==1.6.2
 Flask==2.2.2
-opencv-python==4.6.0.66
-SQLAlchemy==1.4.45
+numpy==1.23.5
+opencv-python==4.5.5.64
+opencv_python_headless==4.5.4.60
 Werkzeug==2.2.2
