@@ -10,6 +10,53 @@ app.secret_key = 'asrtarstaursdlarsn'
 app.config["IMAGE_UPLOADS"] = "./static/images/profiles"
 app.config["ALLOWED_IMAGE_EXTENSIONS"] = ["JPEG", "JPG", "PNG", "GIF"]
 
+def textextract(img):
+    reader = easyocr.Reader(['ar', 'en'], gpu=False)
+    result = reader.readtext(img)
+    return result
+
+def data(color, text):
+    plate_data = {}
+    exact_text = text[0][1]
+    # print("exact", exact_text)
+    plate_data["color"] = color
+    plate_data["text"] = exact_text
+    print(plate_data)
+    return plate_data
+
+    # color extract
+
+
+def colorextract(plate):
+    res = cv2.resize(plate, dsize=(250, 200), interpolation=cv2.INTER_CUBIC)
+    crop2 = res[0:80, 0:250]
+    # reshape array of image pixels
+    data = np.reshape(crop2, (80 * 250, 3))
+    data = np.float32(data)
+    # clustreing using kmeans
+    number_clusters = 1  # one dominat color
+    # when to stop the algorithm, 10 = max_iter, 1.0 = epsilon
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    flags = cv2.KMEANS_RANDOM_CENTERS
+    compactness, labels, centers = cv2.kmeans(
+        data, number_clusters, None, criteria, 10, flags)
+    rgb_values = []
+    for index, row in enumerate(centers):
+        rgb = create_bar(200, 200, row)
+        # bars.append(bar)
+        rgb_values.append(rgb)
+    for index, row in enumerate(rgb_values):
+        print(f'RGB{row}')
+        return f'RGB{row}'
+
+
+def create_bar(height, width, color):
+    bar = np.zeros((height, width, 3), np.uint8)
+    bar[:] = color
+    red, green, blue = int(color[2]), int(color[1]), int(color[0])
+    return (red, green, blue)
+
+
 def allowed_image(filename):
     if not "." in filename:
         return False
@@ -35,51 +82,6 @@ def upload_file():
             img = cv2.imread(os.path.join(app.config["IMAGE_UPLOADS"], filename))
             # bars = []
             # cv2.imshow('Dominant colors', img_bar)
-            def textextract(img):
-                reader = easyocr.Reader(['ar', 'en'], gpu=False)
-                result = reader.readtext(img)
-                return result
-
-            def data(color, text):
-                plate_data = {}
-                exact_text = text[0][1]
-                # print("exact", exact_text)
-                plate_data["color"] = color
-                plate_data["text"] = exact_text
-                print(plate_data)
-                return plate_data
-
-                # color extract
-
-
-            def colorextract(plate):
-                res = cv2.resize(plate, dsize=(250, 200), interpolation=cv2.INTER_CUBIC)
-                crop2 = res[0:80, 0:250]
-                # reshape array of image pixels
-                data = np.reshape(crop2, (80 * 250, 3))
-                data = np.float32(data)
-                # clustreing using kmeans
-                number_clusters = 1  # one dominat color
-                # when to stop the algorithm, 10 = max_iter, 1.0 = epsilon
-                criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-                flags = cv2.KMEANS_RANDOM_CENTERS
-                compactness, labels, centers = cv2.kmeans(
-                    data, number_clusters, None, criteria, 10, flags)
-                rgb_values = []
-                for index, row in enumerate(centers):
-                    rgb = create_bar(200, 200, row)
-                    # bars.append(bar)
-                    rgb_values.append(rgb)
-                for index, row in enumerate(rgb_values):
-                    print(f'RGB{row}')
-                    return f'RGB{row}'
-
-
-            def create_bar(height, width, color):
-                bar = np.zeros((height, width, 3), np.uint8)
-                bar[:] = color
-                red, green, blue = int(color[2]), int(color[1]), int(color[0])
-                return (red, green, blue)
             flash('File upload Successfully !', "success")
             faceCascade = cv2.CascadeClassifier('haarcascade_russian_plate_number.xml')
             faces = faceCascade.detectMultiScale(img, scaleFactor=1.2,minNeighbors=5, minSize=(25, 25))
@@ -103,4 +105,4 @@ def upload_file():
 
 # run always put in last statement or put after all @app.route
 if __name__ == '__main__':
-    app.run(host='localhost')
+    app.run(debug=False , host='0.0.0.0')
